@@ -15,14 +15,13 @@ type LocationSearchProps = {
   onLocationSelected: (location: LocationResult) => void;
 };
 
-// Mapbox Geocoding API search
+// Using OpenStreetMap Nominatim API as a free alternative to Mapbox
 const searchLocations = async (query: string): Promise<LocationResult[]> => {
   if (!query || query.length < 3) return [];
   
   try {
-    // Using a public Mapbox token - in production, this should be from environment variables
     const response = await fetch(
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw&limit=5&types=poi,address,place`
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`
     );
     
     if (!response.ok) {
@@ -30,9 +29,11 @@ const searchLocations = async (query: string): Promise<LocationResult[]> => {
     }
     
     const data = await response.json();
-    return data.features.map((feature: any) => ({
-      place_name: feature.place_name,
-      center: feature.center
+    console.log('Search results:', data);
+    
+    return data.map((item: any) => ({
+      place_name: item.display_name,
+      center: [parseFloat(item.lon), parseFloat(item.lat)]
     }));
   } catch (error) {
     console.error('Error searching locations:', error);
@@ -49,20 +50,33 @@ const LocationSearch = ({ onLocationSelected }: LocationSearchProps) => {
   const handleSearchLocation = async () => {
     if (!searchQuery.trim()) return;
     
+    console.log('Searching for:', searchQuery);
     setIsSearching(true);
     try {
       const results = await searchLocations(searchQuery);
+      console.log('Found results:', results);
       setSearchResults(results);
+      if (results.length === 0) {
+        toast.info('No locations found. Try a different search term.');
+      }
     } finally {
       setIsSearching(false);
     }
   };
 
   const handleSelectLocation = (location: LocationResult) => {
+    console.log('Selected location:', location);
     onLocationSelected(location);
     setSearchResults([]);
     setSearchQuery('');
     toast.success('Location selected');
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSearchLocation();
+    }
   };
 
   return (
@@ -74,7 +88,7 @@ const LocationSearch = ({ onLocationSelected }: LocationSearchProps) => {
           placeholder="Search for schools, addresses, landmarks..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && handleSearchLocation()}
+          onKeyPress={handleKeyPress}
         />
         <Button
           onClick={handleSearchLocation}
@@ -88,19 +102,25 @@ const LocationSearch = ({ onLocationSelected }: LocationSearchProps) => {
       
       {/* Search Results */}
       {searchResults.length > 0 && (
-        <div className="border rounded-md max-h-48 overflow-y-auto">
+        <div className="border rounded-md max-h-48 overflow-y-auto bg-background">
           {searchResults.map((location, index) => (
             <button
               key={index}
-              className="w-full text-left p-3 hover:bg-accent border-b last:border-b-0 text-sm"
+              className="w-full text-left p-3 hover:bg-accent border-b last:border-b-0 text-sm transition-colors"
               onClick={() => handleSelectLocation(location)}
             >
               <div className="flex items-start gap-2">
                 <MapPin className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
-                <span>{location.place_name}</span>
+                <span className="break-words">{location.place_name}</span>
               </div>
             </button>
           ))}
+        </div>
+      )}
+      
+      {isSearching && (
+        <div className="text-sm text-muted-foreground">
+          Searching locations...
         </div>
       )}
     </div>
