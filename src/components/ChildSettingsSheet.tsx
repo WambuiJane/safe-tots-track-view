@@ -40,10 +40,10 @@ type Child = {
 
 type ChildSettingsSheetProps = {
   child: Child;
-  onChildDeleted: (childId: string) => void;
+  children: React.ReactNode;
 };
 
-const ChildSettingsSheet = ({ child, onChildDeleted }: ChildSettingsSheetProps) => {
+const ChildSettingsSheet = ({ child, children }: ChildSettingsSheetProps) => {
   const queryClient = useQueryClient();
   const [fullName, setFullName] = useState(child.full_name || '');
   const [isUpdating, setIsUpdating] = useState(false);
@@ -98,7 +98,6 @@ const ChildSettingsSheet = ({ child, onChildDeleted }: ChildSettingsSheetProps) 
       // This allows the child to still exist and potentially be managed by other parents
       
       toast.success('Child removed successfully');
-      onChildDeleted(child.id);
       setOpen(false);
       
       // Invalidate relevant queries
@@ -114,9 +113,7 @@ const ChildSettingsSheet = ({ child, onChildDeleted }: ChildSettingsSheetProps) 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="sm">
-          <Settings className="h-4 w-4" />
-        </Button>
+        {children}
       </SheetTrigger>
       <SheetContent className="w-full sm:max-w-md overflow-y-auto">
         <SheetHeader>
