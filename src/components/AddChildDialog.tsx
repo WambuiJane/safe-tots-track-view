@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -44,40 +43,21 @@ const AddChildDialog = () => {
 
   const addChildMutation = useMutation({
     mutationFn: async (values: AddChildFormValues) => {
-      if (!parentUser) throw new Error('Parent not authenticated');
+      const { data, error } = await supabase.functions.invoke('invite-child', {
+        body: { email: values.email, fullName: values.fullName },
+      });
 
-      // 1. Invite the child user
-      const { data: inviteData, error: inviteError } = await supabase.auth.inviteUserByEmail(
-        values.email,
-        {
-          data: {
-            full_name: values.fullName,
-            user_role: 'child',
-          },
-        }
-      );
-
-      if (inviteError || !inviteData?.user) {
-        throw new Error(inviteError?.message || 'Failed to invite child.');
-      }
-      
-      const childUser = inviteData.user;
-
-      // 2. Create parent-child relationship
-      const { error: relationError } = await supabase
-        .from('parent_child_relations')
-        .insert({
-          parent_id: parentUser.id,
-          child_id: childUser.id,
-        });
-
-      if (relationError) {
-        // For this app, we'll accept this risk. A cleanup job could be implemented for orphaned users.
-        console.error('Failed to create parent-child relation:', relationError);
-        throw new Error('Failed to link child to parent profile.');
+      if (error) {
+        // This handles network errors or function invocation errors
+        throw new Error(error.message);
       }
 
-      return childUser;
+      if (data.error) {
+        // This handles errors returned from the function itself
+        throw new Error(data.error);
+      }
+
+      return data;
     },
     onSuccess: () => {
       toast.success('Child invited successfully!');
