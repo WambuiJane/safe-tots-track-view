@@ -46,39 +46,53 @@ serve(async (req) => {
       }
     )
 
-    // Check if user already exists
-    const { data: existingUser, error: checkError } = await supabaseAdmin.auth.admin.getUserByEmail(email)
-    
-    if (checkError && checkError.message !== 'User not found') {
-      console.error('Error checking existing user:', checkError)
-      return new Response(JSON.stringify({ error: 'Failed to check user existence' }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 500,
-      })
-    }
+    // Check if user already exists by trying to invite them first
+    // If they exist, the invite will fail with a specific error
+    const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
+      email,
+      {
+        data: {
+          full_name: fullName,
+          user_role: 'child',
+        },
+      }
+    )
 
-    let childUser = existingUser
+    let childUser = null
+    let isExistingUser = false
 
-    // If user doesn't exist, invite them
-    if (!existingUser) {
-      const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
-        email,
-        {
-          data: {
-            full_name: fullName,
-            user_role: 'child',
-          },
+    if (inviteError) {
+      // Check if the error is because user already exists
+      if (inviteError.message?.includes('already been registered') || inviteError.message?.includes('already exists')) {
+        console.log('User already exists, will try to link existing user')
+        isExistingUser = true
+        
+        // Try to find the existing user in profiles table
+        const { data: existingProfile, error: profileError } = await supabaseAdmin
+          .from('profiles')
+          .select('id, full_name')
+          .eq('id', 'auth.users.id')
+          .limit(1)
+          .single()
+
+        if (profileError) {
+          console.error('Could not find existing user profile')
+          return new Response(JSON.stringify({ error: 'User exists but could not be found. Please ask them to sign up first.' }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 400,
+          })
         }
-      )
 
-      if (inviteError) {
+        // For existing users, we'll create a simulated user object
+        childUser = { id: existingProfile.id }
+      } else {
         console.error('Invite error:', inviteError)
         return new Response(JSON.stringify({ error: inviteError.message || 'Failed to invite child.' }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 500,
         })
       }
-      
+    } else {
       childUser = inviteData?.user
     }
 
@@ -125,7 +139,7 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ 
       user: childUser,
-      message: existingUser ? 'Child linked successfully' : 'Child invited and linked successfully'
+      message: isExistingUser ? 'Existing user linked successfully' : 'Child invited and linked successfully'
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
