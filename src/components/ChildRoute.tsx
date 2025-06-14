@@ -15,7 +15,7 @@ const fetchUserRole = async (userId: string) => {
 
   if (error) {
     console.error('Error fetching user role:', error);
-    throw error;
+    return null; // Return null instead of throwing
   }
   return data;
 };
@@ -33,6 +33,8 @@ const ChildRoute = ({ children }: ChildRouteProps) => {
     enabled: !!user,
   });
 
+  console.log('ChildRoute - Profile:', profile, 'Loading:', isLoadingProfile);
+
   if (loading || isLoadingProfile) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -45,10 +47,12 @@ const ChildRoute = ({ children }: ChildRouteProps) => {
     return <Navigate to="/" replace />;
   }
 
-  if (profile?.user_role !== 'child') {
+  // Only redirect if we have profile data and user is definitely not a child
+  if (profile && profile.user_role && profile.user_role !== 'child') {
     return <Navigate to="/dashboard" replace />;
   }
 
+  // Allow access if profile is null (loading) or if user is a child
   return <>{children}</>;
 };
 

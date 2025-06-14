@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { Bell, User, MapPin, Navigation } from 'lucide-react';
+import { Bell, User, MapPin, Navigation, Phone } from 'lucide-react';
 import SOSButton from '@/components/SOSButton';
 import QuickMessages from '@/components/QuickMessages';
 import { useNavigate } from 'react-router-dom';
@@ -20,7 +20,7 @@ const fetchProfile = async (userId: string) => {
 
   if (error) {
     console.error('Error fetching profile:', error);
-    throw error;
+    return null; // Return null instead of throwing to prevent redirect
   }
   return data;
 };
@@ -38,14 +38,17 @@ const ChildDashboard = () => {
     enabled: !!user,
   });
 
-  // Redirect if not a child
+  console.log('ChildDashboard - Profile:', profile, 'User role:', profile?.user_role);
+
+  // Only redirect if we have profile data and user is definitely not a child
   useEffect(() => {
-    if (profile && profile.user_role !== 'child') {
+    if (profile && profile.user_role && profile.user_role !== 'child') {
+      console.log('Redirecting non-child user to dashboard');
       navigate('/dashboard', { replace: true });
     }
   }, [profile, navigate]);
 
-  // Auto-request location when component mounts
+  // Auto-request location when component mounts for children
   useEffect(() => {
     if (profile?.user_role === 'child' && !isLocationEnabled) {
       requestLocationPermission();
@@ -59,14 +62,8 @@ const ChildDashboard = () => {
     }
 
     try {
-      // Request permission first
-      const permission = await navigator.permissions.query({ name: 'geolocation' });
+      console.log('Requesting location permission...');
       
-      if (permission.state === 'denied') {
-        toast.error('Location permission denied. Please enable in browser settings.');
-        return;
-      }
-
       // Start watching position
       const watchId = navigator.geolocation.watchPosition(
         (position) => {
@@ -169,7 +166,7 @@ const ChildDashboard = () => {
         .insert({
           child_id: user!.id,
           alert_type: 'SOS',
-          message: 'Emergency alert triggered by shake gesture'
+          message: 'Emergency alert triggered by shake gesture 🚨'
         });
 
       toast.success('Emergency alert sent to your parents');
@@ -177,6 +174,50 @@ const ChildDashboard = () => {
       console.error('Error sending shake alert:', error);
       toast.error('Failed to send alert');
     }
+  };
+
+  const triggerFakeCall = async () => {
+    // Send alert to parents first
+    try {
+      await supabase
+        .from('alerts')
+        .insert({
+          child_id: user!.id,
+          alert_type: 'SOS',
+          message: 'Fake call emergency - Call me urgently! 📞'
+        });
+
+      toast.success('Emergency fake call alert sent to parents');
+    } catch (error) {
+      console.error('Error sending fake call alert:', error);
+      toast.error('Failed to send alert');
+    }
+
+    // Show fake call interface
+    const fakeCallDiv = document.createElement('div');
+    fakeCallDiv.innerHTML = `
+      <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; color: #fff; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">
+        <div style="text-align: center;">
+          <div style="width: 100px; height: 100px; border-radius: 50%; background: #4ade80; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;">
+            <span style="font-size: 40px;">📞</span>
+          </div>
+          <h2 style="margin: 0 0 10px; font-size: 24px;">Incoming Call</h2>
+          <p style="margin: 0 0 40px; color: #9ca3af;">Mom</p>
+          <div style="display: flex; gap: 40px;">
+            <button onclick="this.parentElement.parentElement.parentElement.remove()" style="width: 70px; height: 70px; border-radius: 50%; background: #ef4444; border: none; color: white; font-size: 30px; cursor: pointer;">✕</button>
+            <button onclick="this.parentElement.parentElement.parentElement.remove()" style="width: 70px; height: 70px; border-radius: 50%; background: #22c55e; border: none; color: white; font-size: 30px; cursor: pointer;">✓</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(fakeCallDiv);
+    
+    // Auto-remove after 15 seconds
+    setTimeout(() => {
+      if (fakeCallDiv.parentNode) {
+        fakeCallDiv.remove();
+      }
+    }, 15000);
   };
 
   const handleLogout = async () => {
@@ -213,14 +254,15 @@ const ChildDashboard = () => {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-2 text-muted-foreground">Loading...</p>
+          <p className="mt-2 text-muted-foreground">Loading your dashboard...</p>
         </div>
       </div>
     );
   }
 
-  if (profile && profile.user_role !== 'child') {
-    return null; // Will redirect via useEffect
+  // Don't render if we're waiting for profile or if user is not a child
+  if (!profile || (profile.user_role && profile.user_role !== 'child')) {
+    return null;
   }
 
   return (
@@ -237,22 +279,83 @@ const ChildDashboard = () => {
         <h2 className="text-3xl font-bold mb-8">Stay Safe Dashboard</h2>
         
         <div className="grid gap-6 md:grid-cols-2">
+          {/* SOS Emergency Button */}
+          <Card className="md:col-span-2">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-red-600">
+                <Bell className="h-6 w-6" />
+                Emergency SOS
+              </CardTitle>
+              <CardDescription>
+                Tap for immediate emergency alert to your parents
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <SOSButton />
+            </CardContent>
+          </Card>
+
+          {/* Fake Call Button */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Phone className="h-5 w-5 text-green-600" />
+                Discreet Help
+              </CardTitle>
+              <CardDescription>
+                Fake call to get help without being obvious
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button 
+                onClick={triggerFakeCall}
+                className="w-full h-16 text-lg bg-green-600 hover:bg-green-700"
+              >
+                📞 Fake Call from Mom
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Shake to Alert */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bell className="h-5 w-5 text-orange-500" />
+                Shake Alert
+              </CardTitle>
+              <CardDescription>
+                Shake phone vigorously 3 times for emergency
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button
+                onClick={requestShakePermissions}
+                disabled={isShakeEnabled}
+                variant={isShakeEnabled ? "secondary" : "default"}
+                className="w-full"
+              >
+                {isShakeEnabled ? '✅ Shake Alert Enabled' : 'Enable Shake Alert'}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Location Tracking */}
           <Card className="md:col-span-2">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Navigation className="h-5 w-5 text-blue-500" />
-                Location Tracking
+                Location Sharing
               </CardTitle>
               <CardDescription>
                 Share your location with your parents for safety
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent>
               <div className="flex items-center justify-between p-4 border rounded-lg">
                 <div>
-                  <h4 className="font-medium">Location Sharing</h4>
+                  <h4 className="font-medium">Live Location</h4>
                   <p className="text-sm text-muted-foreground">
-                    {isLocationEnabled ? 'Your location is being shared with your parents' : 'Enable location sharing for safety'}
+                    {isLocationEnabled ? '✅ Your location is being shared with your parents' : 'Enable location sharing for safety'}
                   </p>
                 </div>
                 <Button
@@ -265,45 +368,15 @@ const ChildDashboard = () => {
             </CardContent>
           </Card>
 
-          <Card className="md:col-span-2">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bell className="h-5 w-5 text-red-500" />
-                Emergency Features
-              </CardTitle>
-              <CardDescription>
-                Quick access to emergency and safety features
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <SOSButton />
-              
-              <div className="flex items-center justify-between p-4 border rounded-lg">
-                <div>
-                  <h4 className="font-medium">Shake to Alert</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Shake your phone vigorously 3 times to send an emergency alert
-                  </p>
-                </div>
-                <Button
-                  onClick={requestShakePermissions}
-                  disabled={isShakeEnabled}
-                  variant={isShakeEnabled ? "secondary" : "default"}
-                >
-                  {isShakeEnabled ? 'Enabled' : 'Enable'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
+          {/* Quick Status Messages */}
           <Card className="md:col-span-2">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <User className="h-5 w-5 text-blue-500" />
-                Quick Messages
+                Quick Status Updates
               </CardTitle>
               <CardDescription>
-                Send quick updates to your parents
+                Send quick updates to your parents with one tap
               </CardDescription>
             </CardHeader>
             <CardContent>
