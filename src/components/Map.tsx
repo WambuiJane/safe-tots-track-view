@@ -1,112 +1,69 @@
 
-import React, { useEffect, useRef, useState } from 'react';
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useEffect, useState, useRef } from 'react';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
 import { Loader2 } from 'lucide-react';
+import L from 'leaflet';
+
+// Fix for default marker icon issue with bundlers like Vite
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
 
 const Map = () => {
-  const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<mapboxgl.Map | null>(null);
-  const [mapboxToken, setMapboxToken] = useState(() => localStorage.getItem('mapboxToken') || '');
-  const [tokenInput, setTokenInput] = useState('');
   const [isLocating, setIsLocating] = useState(true);
+  const [position, setPosition] = useState<[number, number]>([51.505, -0.09]); // Default to London
+  const mapRef = useRef<L.Map | null>(null);
 
   useEffect(() => {
-    if (!mapboxToken || !mapContainer.current) return;
-
-    mapboxgl.accessToken = mapboxToken;
-    
-    if (map.current) return; // initialize map only once
-
-    const initializeMap = (center: [number, number], zoom: number) => {
-      if (!mapContainer.current) return;
-      map.current = new mapboxgl.Map({
-        container: mapContainer.current,
-        style: 'mapbox://styles/mapbox/streets-v12',
-        center: center,
-        zoom: zoom,
-      });
-      
-      map.current.addControl(new mapboxgl.NavigationControl());
-
-      // Add a marker at the center
-      new mapboxgl.Marker()
-          .setLngLat(center)
-          .addTo(map.current);
-      
-      setIsLocating(false);
-    };
-
     if (navigator.geolocation) {
-      setIsLocating(true);
       navigator.geolocation.getCurrentPosition(
-        (position) => {
-          initializeMap([position.coords.longitude, position.coords.latitude], 13);
+        (pos) => {
+          const newPos: [number, number] = [pos.coords.latitude, pos.coords.longitude];
+          setPosition(newPos);
+          if (mapRef.current) {
+            mapRef.current.flyTo(newPos, 13);
+          }
+          setIsLocating(false);
         },
-        (error) => {
-          console.error("Geolocation error: ", error.message);
-          // Fallback to default location
-          initializeMap([-74.5, 40], 9);
+        (err) => {
+          console.error("Geolocation error:", err.message);
+          setIsLocating(false); // Stop loading, use default location
         }
       );
     } else {
       console.log("Geolocation is not supported by this browser.");
-      // Fallback to default location
-      initializeMap([-74.5, 40], 9);
+      setIsLocating(false); // Stop loading, use default location
     }
-
-    return () => {
-      map.current?.remove();
-      map.current = null;
-    };
-  }, [mapboxToken]);
-  
-  const handleTokenSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (tokenInput) {
-      localStorage.setItem('mapboxToken', tokenInput);
-      setMapboxToken(tokenInput);
-    }
-  };
-
-  if (!mapboxToken) {
-    return (
-        <div className="border rounded-lg h-[60vh] bg-muted flex items-center justify-center p-4">
-            <Card className="w-full max-w-md">
-                <CardHeader>
-                    <CardTitle>Mapbox Access Token Required</CardTitle>
-                    <CardDescription>
-                        Please provide your Mapbox public access token to display the map. You can get one from your <a href="https://account.mapbox.com/access-tokens" target="_blank" rel="noopener noreferrer" className="text-primary underline">Mapbox account</a>.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <form onSubmit={handleTokenSubmit} className="flex gap-2">
-                        <Input 
-                            type="password"
-                            placeholder="pk.ey..."
-                            value={tokenInput}
-                            onChange={(e) => setTokenInput(e.target.value)}
-                        />
-                        <Button type="submit">Set Token</Button>
-                    </form>
-                </CardContent>
-            </Card>
-        </div>
-    );
-  }
+  }, []);
 
   return (
-    <div className="relative border rounded-lg h-[60vh] w-full">
+    <div className="relative border rounded-lg h-[60vh] w-full overflow-hidden">
       {isLocating && (
-        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center z-10 rounded-lg">
+        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center z-[1000] rounded-lg">
           <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
           <p className="text-muted-foreground">Getting your location...</p>
         </div>
       )}
-      <div ref={mapContainer} className="h-full w-full" />
+      <MapContainer
+        center={position}
+        zoom={13}
+        scrollWheelZoom={true}
+        style={{ height: '100%', width: '100%' }}
+        ref={mapRef}
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        <Marker position={position}>
+          <Popup>Your location</Popup>
+        </Marker>
+      </MapContainer>
     </div>
   );
 };
