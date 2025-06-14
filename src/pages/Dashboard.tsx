@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Skeleton } from '@/components/ui/skeleton';
 import ChildrenManager from '@/components/ChildrenManager';
 import Map from '@/components/Map';
+import { Card } from '@/components/ui/card';
 
 const fetchProfile = async (userId: string) => {
   if (!userId) return null;
@@ -54,7 +55,7 @@ const Dashboard = () => {
       <main className="p-4 md:p-8">
         <h2 className="text-3xl font-bold mb-8">Dashboard</h2>
         
-        <div className="space-y-8">
+        <div className="grid gap-8">
             <ChildrenManager />
             <Map />
         </div>
