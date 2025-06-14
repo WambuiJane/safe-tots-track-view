@@ -9,31 +9,39 @@ import { Bell, User, MapPin } from 'lucide-react';
 import SOSButton from '@/components/SOSButton';
 import QuickMessages from '@/components/QuickMessages';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+
+const fetchProfile = async (userId: string) => {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('user_role, full_name')
+    .eq('id', userId)
+    .single();
+
+  if (error) {
+    console.error('Error fetching profile:', error);
+    throw error;
+  }
+  return data;
+};
 
 const ChildDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [isShakeEnabled, setIsShakeEnabled] = useState(false);
 
+  const { data: profile, isLoading } = useQuery({
+    queryKey: ['profile', user?.id],
+    queryFn: () => fetchProfile(user!.id),
+    enabled: !!user,
+  });
+
+  // Redirect if not a child
   useEffect(() => {
-    // Check if user is a child
-    const checkUserRole = async () => {
-      if (!user) return;
-      
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('user_role')
-        .eq('id', user.id)
-        .single();
-
-      if (error || data?.user_role !== 'child') {
-        navigate('/dashboard');
-        return;
-      }
-    };
-
-    checkUserRole();
-  }, [user, navigate]);
+    if (profile && profile.user_role !== 'child') {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [profile, navigate]);
 
   useEffect(() => {
     // Shake detection for emergency alert
@@ -120,11 +128,27 @@ const ChildDashboard = () => {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-2 text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (profile && profile.user_role !== 'child') {
+    return null; // Will redirect via useEffect
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <header className="p-4 border-b flex justify-between items-center">
         <h1 className="text-xl font-bold">Safe Tots Track - Child</h1>
         <div className="flex items-center gap-4">
+          <span>Welcome, {profile?.full_name || 'Child'}</span>
           <Button onClick={handleLogout} variant="outline">Logout</Button>
         </div>
       </header>

@@ -9,7 +9,7 @@ import ChildrenManager from '@/components/ChildrenManager';
 import Map from '@/components/Map';
 import AlertsPanel from '@/components/AlertsPanel';
 import { Card } from '@/components/ui/card';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const fetchProfile = async (userId: string) => {
   if (!userId) return null;
@@ -39,15 +39,25 @@ const Dashboard = () => {
   });
 
   // Redirect children to their own dashboard
-  if (profile?.user_role === 'child') {
-    navigate('/child-dashboard');
-    return null;
-  }
+  useEffect(() => {
+    if (profile?.user_role === 'child') {
+      navigate('/child-dashboard', { replace: true });
+    }
+  }, [profile, navigate]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate('/');
   };
+
+  // Show loading while checking user role
+  if (isLoadingProfile || profile?.user_role === 'child') {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Skeleton className="h-8 w-48" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
