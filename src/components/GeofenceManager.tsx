@@ -33,9 +33,13 @@ const GeofenceManager = ({ childId }: GeofenceManagerProps) => {
   });
 
   return (
-    <div className="space-y-6 max-h-[80vh] overflow-y-auto">
-      <GeofenceForm childId={childId} childLocation={childLocation} />
-      <GeofenceList />
+    <div className="space-y-6">
+      <div className="space-y-4">
+        <GeofenceForm childId={childId} childLocation={childLocation} />
+      </div>
+      <div className="space-y-4">
+        <GeofenceList />
+      </div>
     </div>
   );
 };

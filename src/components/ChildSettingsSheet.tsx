@@ -115,7 +115,7 @@ const ChildSettingsSheet = ({ child, children }: ChildSettingsSheetProps) => {
       <SheetTrigger asChild>
         {children}
       </SheetTrigger>
-      <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+      <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
         <SheetHeader>
           <SheetTitle>Child Settings</SheetTitle>
           <SheetDescription>
@@ -181,8 +181,10 @@ const ChildSettingsSheet = ({ child, children }: ChildSettingsSheetProps) => {
               </div>
             </TabsContent>
             
-            <TabsContent value="places" className="mt-4">
-              <GeofenceManager childId={child.id} />
+            <TabsContent value="places" className="mt-4 space-y-4">
+              <div className="min-h-[600px]">
+                <GeofenceManager childId={child.id} />
+              </div>
             </TabsContent>
           </Tabs>
         </div>
