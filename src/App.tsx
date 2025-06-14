@@ -28,9 +28,11 @@ const App = () => (
             <Route element={<ProtectedRoute />}>
               <Route path="/dashboard" element={<Dashboard />} />
             </Route>
-            <Route element={<ChildRoute />}>
-              <Route path="/child-dashboard" element={<ChildDashboard />} />
-            </Route>
+            <Route path="/child-dashboard" element={
+              <ChildRoute>
+                <ChildDashboard />
+              </ChildRoute>
+            } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
