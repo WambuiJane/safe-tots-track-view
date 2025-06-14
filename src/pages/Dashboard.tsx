@@ -1,3 +1,4 @@
+
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
@@ -6,6 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Skeleton } from '@/components/ui/skeleton';
 import ChildrenManager from '@/components/ChildrenManager';
 import Map from '@/components/Map';
+import AlertsPanel from '@/components/AlertsPanel';
 import { Card } from '@/components/ui/card';
 import { useState } from 'react';
 
@@ -13,7 +15,7 @@ const fetchProfile = async (userId: string) => {
   if (!userId) return null;
   const { data, error } = await supabase
     .from('profiles')
-    .select('full_name')
+    .select('full_name, user_role')
     .eq('id', userId)
     .single();
   
@@ -36,6 +38,12 @@ const Dashboard = () => {
     enabled: !!user,
   });
 
+  // Redirect children to their own dashboard
+  if (profile?.user_role === 'child') {
+    navigate('/child-dashboard');
+    return null;
+  }
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate('/');
@@ -55,11 +63,12 @@ const Dashboard = () => {
         </div>
       </header>
       <main className="p-4 md:p-8">
-        <h2 className="text-3xl font-bold mb-8">Dashboard</h2>
+        <h2 className="text-3xl font-bold mb-8">Parent Dashboard</h2>
         
         <div className="grid gap-8">
-            <ChildrenManager setSelectedChildId={setSelectedChildId} />
-            <Map selectedChildId={selectedChildId} setSelectedChildId={setSelectedChildId} />
+          <AlertsPanel />
+          <ChildrenManager setSelectedChildId={setSelectedChildId} />
+          <Map selectedChildId={selectedChildId} setSelectedChildId={setSelectedChildId} />
         </div>
       </main>
     </div>

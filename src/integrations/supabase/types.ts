@@ -187,6 +187,38 @@ export type Database = {
         }
         Relationships: []
       }
+      quick_messages: {
+        Row: {
+          child_id: string
+          id: string
+          is_read: boolean
+          message: string
+          sent_at: string
+        }
+        Insert: {
+          child_id: string
+          id?: string
+          is_read?: boolean
+          message: string
+          sent_at?: string
+        }
+        Update: {
+          child_id?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quick_messages_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -205,6 +237,16 @@ export type Database = {
       }
       is_parent_of: {
         Args: { _parent_id: string; _child_id: string }
+        Returns: boolean
+      }
+      point_in_geofence: {
+        Args: {
+          p_latitude: number
+          p_longitude: number
+          p_geofence_lat: number
+          p_geofence_lng: number
+          p_radius: number
+        }
         Returns: boolean
       }
     }
