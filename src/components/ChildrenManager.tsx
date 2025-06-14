@@ -1,12 +1,12 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, User, Shield, MapPin } from "lucide-react";
+import { User, Shield, MapPin } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tables } from "@/integrations/supabase/types";
+import AddChildDialog from "./AddChildDialog";
 
 // The RLS policy on 'profiles' ensures parents can only see their own children.
 const fetchChildren = async () => {
@@ -56,9 +56,7 @@ const ChildrenManager = () => {
                         <CardTitle>My Children</CardTitle>
                         <CardDescription>Manage your children's profiles and safety settings.</CardDescription>
                     </div>
-                    <Button disabled>
-                        <PlusCircle className="mr-2 h-4 w-4" /> Add Child
-                    </Button>
+                    <AddChildDialog />
                 </div>
             </CardHeader>
             <CardContent>

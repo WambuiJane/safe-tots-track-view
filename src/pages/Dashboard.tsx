@@ -1,4 +1,3 @@
-
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
@@ -6,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { Skeleton } from '@/components/ui/skeleton';
 import ChildrenManager from '@/components/ChildrenManager';
+import Map from '@/components/Map';
 
 const fetchProfile = async (userId: string) => {
   if (!userId) return null;
@@ -56,9 +56,7 @@ const Dashboard = () => {
         
         <div className="space-y-8">
             <ChildrenManager />
-            <div className="border rounded-lg h-[60vh] bg-muted flex items-center justify-center">
-                <p className="text-muted-foreground">Interactive Map will be displayed here</p>
-            </div>
+            <Map />
         </div>
       </main>
     </div>
