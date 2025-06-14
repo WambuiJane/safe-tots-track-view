@@ -82,7 +82,47 @@ const ChildSettingsSheet = ({ child, children }: ChildSettingsSheetProps) => {
   const handleDeleteChild = async () => {
     setIsDeleting(true);
     try {
-      // First delete the parent-child relationship
+      console.log('Starting child deletion process for child ID:', child.id);
+      
+      // Step 1: Delete all related data first
+      
+      // Delete location history
+      const { error: locationError } = await supabase
+        .from('location_history')
+        .delete()
+        .eq('child_id', child.id);
+
+      if (locationError) {
+        console.error('Error deleting location history:', locationError);
+        toast.error('Failed to delete child location history');
+        return;
+      }
+
+      // Delete alerts
+      const { error: alertsError } = await supabase
+        .from('alerts')
+        .delete()
+        .eq('child_id', child.id);
+
+      if (alertsError) {
+        console.error('Error deleting alerts:', alertsError);
+        toast.error('Failed to delete child alerts');
+        return;
+      }
+
+      // Delete quick messages
+      const { error: messagesError } = await supabase
+        .from('quick_messages')
+        .delete()
+        .eq('child_id', child.id);
+
+      if (messagesError) {
+        console.error('Error deleting quick messages:', messagesError);
+        toast.error('Failed to delete child messages');
+        return;
+      }
+
+      // Step 2: Delete parent-child relationships
       const { error: relationError } = await supabase
         .from('parent_child_relations')
         .delete()
@@ -90,13 +130,23 @@ const ChildSettingsSheet = ({ child, children }: ChildSettingsSheetProps) => {
 
       if (relationError) {
         console.error('Error deleting parent-child relation:', relationError);
-        toast.error('Failed to delete child');
+        toast.error('Failed to delete child relationship');
         return;
       }
 
-      // Note: We don't delete the profile itself, just the relationship
-      // This allows the child to still exist and potentially be managed by other parents
-      
+      // Step 3: Delete the child profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', child.id);
+
+      if (profileError) {
+        console.error('Error deleting child profile:', profileError);
+        toast.error('Failed to delete child profile');
+        return;
+      }
+
+      console.log('Child deletion completed successfully');
       toast.success('Child removed successfully');
       setOpen(false);
       
@@ -115,7 +165,7 @@ const ChildSettingsSheet = ({ child, children }: ChildSettingsSheetProps) => {
       <SheetTrigger asChild>
         {children}
       </SheetTrigger>
-      <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
+      <SheetContent className="w-full sm:max-w-4xl overflow-y-auto">
         <SheetHeader>
           <SheetTitle>Child Settings</SheetTitle>
           <SheetDescription>
@@ -161,8 +211,7 @@ const ChildSettingsSheet = ({ child, children }: ChildSettingsSheetProps) => {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This will remove {child.full_name || 'this child'} from your account. 
-                        You will no longer be able to track their location or receive alerts.
+                        This will permanently delete {child.full_name || 'this child'} and all their data including location history, alerts, and messages. 
                         This action cannot be undone.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
@@ -181,7 +230,7 @@ const ChildSettingsSheet = ({ child, children }: ChildSettingsSheetProps) => {
               </div>
             </TabsContent>
             
-            <TabsContent value="places" className="mt-4 space-y-4">
+            <TabsContent value="places" className="mt-4 space-y-6">
               <div className="min-h-[600px]">
                 <GeofenceManager childId={child.id} />
               </div>
