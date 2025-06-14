@@ -1,41 +1,62 @@
 
 import React, { useState } from 'react';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from '@/components/ui/sheet';
+import { useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { supabase } from '@/integrations/supabase/client';
-import { Tables } from '@/integrations/supabase/types';
-import { useQueryClient, useQuery } from '@tanstack/react-query';
-import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'sonner';
-import { Trash, Edit, MapPin } from 'lucide-react';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Settings, Trash } from 'lucide-react';
+import { toast } from 'sonner';
 import GeofenceManager from './GeofenceManager';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
-type ChildSettingsSheetProps = {
-  child: Tables<'profiles'>;
-  children: React.ReactNode;
+type Child = {
+  id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  latitude?: number;
+  longitude?: number;
+  recorded_at?: string;
 };
 
-const ChildSettingsSheet = ({ child, children }: ChildSettingsSheetProps) => {
-  const [isOpen, setIsOpen] = useState(false);
+type ChildSettingsSheetProps = {
+  child: Child;
+  onChildDeleted: (childId: string) => void;
+};
+
+const ChildSettingsSheet = ({ child, onChildDeleted }: ChildSettingsSheetProps) => {
+  const queryClient = useQueryClient();
   const [fullName, setFullName] = useState(child.full_name || '');
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const [open, setOpen] = useState(false);
 
   const handleUpdateChild = async () => {
     if (!fullName.trim()) {
-      toast.error('Name cannot be empty');
+      toast.error('Please enter a name');
       return;
     }
 
     setIsUpdating(true);
-    console.log('Updating child:', child.id, 'with name:', fullName);
-
     try {
       const { error } = await supabase
         .from('profiles')
@@ -46,9 +67,9 @@ const ChildSettingsSheet = ({ child, children }: ChildSettingsSheetProps) => {
         console.error('Error updating child:', error);
         toast.error('Failed to update child details');
       } else {
-        console.log('Child updated successfully');
         toast.success('Child details updated successfully');
-        queryClient.invalidateQueries({ queryKey: ['children', user?.id] });
+        queryClient.invalidateQueries({ queryKey: ['children'] });
+        queryClient.invalidateQueries({ queryKey: ['profile'] });
       }
     } catch (error) {
       console.error('Unexpected error updating child:', error);
@@ -60,37 +81,28 @@ const ChildSettingsSheet = ({ child, children }: ChildSettingsSheetProps) => {
 
   const handleDeleteChild = async () => {
     setIsDeleting(true);
-    console.log('Deleting child:', child.id, child.full_name);
-
     try {
       // First delete the parent-child relationship
       const { error: relationError } = await supabase
         .from('parent_child_relations')
         .delete()
-        .eq('child_id', child.id)
-        .eq('parent_id', user?.id);
+        .eq('child_id', child.id);
 
       if (relationError) {
         console.error('Error deleting parent-child relation:', relationError);
-        toast.error('Failed to remove child');
+        toast.error('Failed to delete child');
         return;
       }
 
-      // Then delete the child profile
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', child.id);
-
-      if (profileError) {
-        console.error('Error deleting child profile:', profileError);
-        toast.error('Failed to delete child');
-      } else {
-        console.log('Child deleted successfully');
-        toast.success('Child removed successfully');
-        queryClient.invalidateQueries({ queryKey: ['children', user?.id] });
-        setIsOpen(false);
-      }
+      // Note: We don't delete the profile itself, just the relationship
+      // This allows the child to still exist and potentially be managed by other parents
+      
+      toast.success('Child removed successfully');
+      onChildDeleted(child.id);
+      setOpen(false);
+      
+      // Invalidate relevant queries
+      queryClient.invalidateQueries({ queryKey: ['children'] });
     } catch (error) {
       console.error('Unexpected error deleting child:', error);
       toast.error('An unexpected error occurred');
@@ -100,79 +112,83 @@ const ChildSettingsSheet = ({ child, children }: ChildSettingsSheetProps) => {
   };
 
   return (
-    <Sheet open={isOpen} onOpenChange={setIsOpen}>
+    <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        {children}
+        <Button variant="ghost" size="sm">
+          <Settings className="h-4 w-4" />
+        </Button>
       </SheetTrigger>
-      <SheetContent side="right" className="w-full sm:max-w-2xl">
+      <SheetContent className="w-full sm:max-w-md overflow-y-auto">
         <SheetHeader>
-          <SheetTitle>{child.full_name || 'Child'} Settings</SheetTitle>
+          <SheetTitle>Child Settings</SheetTitle>
           <SheetDescription>
-            Manage {child.full_name || 'this child'}'s details and safety settings.
+            Manage {child.full_name || 'child'}'s details and safe places.
           </SheetDescription>
         </SheetHeader>
         
-        <Tabs defaultValue="details" className="mt-6">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="details">Details</TabsTrigger>
-            <TabsTrigger value="locations">Safe Places</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="details" className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="fullName">Full Name</Label>
-              <Input
-                id="fullName"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Enter child's full name"
-              />
-            </div>
+        <div className="mt-6">
+          <Tabs defaultValue="details" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="details">Details</TabsTrigger>
+              <TabsTrigger value="places">Safe Places</TabsTrigger>
+            </TabsList>
             
-            <div className="space-y-4">
+            <TabsContent value="details" className="space-y-4 mt-4">
+              <div className="space-y-2">
+                <Label htmlFor="child-name">Child's Name</Label>
+                <Input
+                  id="child-name"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Enter child's name"
+                />
+              </div>
+              
               <Button 
                 onClick={handleUpdateChild} 
-                disabled={isUpdating || fullName.trim() === child.full_name}
+                disabled={isUpdating || fullName === child.full_name}
                 className="w-full"
               >
-                <Edit className="h-4 w-4 mr-2" />
                 {isUpdating ? 'Updating...' : 'Update Details'}
               </Button>
               
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="destructive" className="w-full" disabled={isDeleting}>
-                    <Trash className="h-4 w-4 mr-2" />
-                    Remove Child
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will permanently remove {child.full_name || 'this child'} from your account. 
-                      This action cannot be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction 
-                      onClick={handleDeleteChild}
-                      disabled={isDeleting}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    >
-                      {isDeleting ? 'Removing...' : 'Remove Child'}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="locations" className="space-y-4">
-            <GeofenceManager childId={child.id} />
-          </TabsContent>
-        </Tabs>
+              <div className="pt-4 border-t">
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" className="w-full">
+                      <Trash className="h-4 w-4 mr-2" />
+                      Remove Child
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will remove {child.full_name || 'this child'} from your account. 
+                        You will no longer be able to track their location or receive alerts.
+                        This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDeleteChild}
+                        disabled={isDeleting}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        {isDeleting ? 'Removing...' : 'Remove Child'}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="places" className="mt-4">
+              <GeofenceManager childId={child.id} />
+            </TabsContent>
+          </Tabs>
+        </div>
       </SheetContent>
     </Sheet>
   );
