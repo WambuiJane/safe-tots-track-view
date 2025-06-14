@@ -1,68 +1,151 @@
 
 import React, { useEffect, useState, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Loader2 } from 'lucide-react';
+import { Loader2, User } from 'lucide-react';
 import L from 'leaflet';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { Tables } from '@/integrations/supabase/types';
 
-// Fix for default marker icon issue with bundlers like Vite
+// Fix for default marker icon issue with bundlers
 delete (L.Icon.Default.prototype as any)._getIconUrl;
-
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
+type ChildLocation = {
+  id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  recorded_at: string | null;
+};
+
+const createAvatarIcon = (child: ChildLocation) => {
+  const fallbackInitials = child.full_name?.charAt(0).toUpperCase() || <User className="h-6 w-6" />;
+  const content = child.avatar_url
+    ? `<img src="${child.avatar_url}" alt="${child.full_name || 'Child Avatar'}" class="w-10 h-10 rounded-full border-2 border-primary shadow-lg object-cover bg-background" />`
+    : `<div class="w-10 h-10 rounded-full border-2 border-primary shadow-lg bg-muted flex items-center justify-center text-primary font-bold text-lg">${fallbackInitials}</div>`;
+
+  return L.divIcon({
+    html: content,
+    className: 'bg-transparent border-none',
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -40],
+  });
+};
+
+const MapUpdater = ({ childrenLocations }: { childrenLocations: ChildLocation[] }) => {
+  const map = useMap();
+  useEffect(() => {
+    const childrenWithLocations = childrenLocations.filter(c => c.latitude && c.longitude) as Required<Pick<ChildLocation, 'latitude' | 'longitude'>>[];
+
+    if (childrenWithLocations.length > 0) {
+      const bounds = L.latLngBounds(childrenWithLocations.map(c => [c.latitude, c.longitude]));
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
+    }
+  }, [childrenLocations, map]);
+
+  return null;
+};
+
 const Map = () => {
-  const [isLocating, setIsLocating] = useState(true);
-  const [position, setPosition] = useState<[number, number]>([51.505, -0.09]); // Default to London
-  const mapRef = useRef<L.Map | null>(null);
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const queryKey = ['childrenLocations', user?.id];
+
+  const { data: childrenLocations = [], isLoading } = useQuery({
+    queryKey,
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase.rpc('get_children_latest_locations', { p_parent_id: user.id });
+      if (error) {
+        console.error("Error fetching children locations:", error);
+        throw error;
+      }
+      return data || [];
+    },
+    enabled: !!user,
+  });
 
   useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const newPos: [number, number] = [pos.coords.latitude, pos.coords.longitude];
-          setPosition(newPos);
-          if (mapRef.current) {
-            mapRef.current.flyTo(newPos, 13);
-          }
-          setIsLocating(false);
-        },
-        (err) => {
-          console.error("Geolocation error:", err.message);
-          setIsLocating(false); // Stop loading, use default location
-        }
-      );
-    } else {
-      console.log("Geolocation is not supported by this browser.");
-      setIsLocating(false); // Stop loading, use default location
-    }
-  }, []);
+    if (!user) return;
+
+    const handleLocationInsert = (payload: any) => {
+      const newLocation = payload.new as Tables<'location_history'>;
+      queryClient.setQueryData(queryKey, (oldData: ChildLocation[] | undefined) => {
+        if (!oldData) return [];
+        return oldData.map(child =>
+          child.id === newLocation.child_id
+            ? { ...child, latitude: newLocation.latitude, longitude: newLocation.longitude, recorded_at: newLocation.recorded_at }
+            : child
+        );
+      });
+    };
+    
+    const handleProfileUpdate = (payload: any) => {
+        const updatedProfile = payload.new as Tables<'profiles'>;
+        queryClient.setQueryData(queryKey, (oldData: ChildLocation[] | undefined) => {
+            if (!oldData) return [];
+            return oldData.map(child => 
+                child.id === updatedProfile.id 
+                ? { ...child, full_name: updatedProfile.full_name, avatar_url: updatedProfile.avatar_url }
+                : child
+            );
+        });
+    };
+
+    const locationChannel = supabase.channel('realtime-child-locations')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'location_history' }, handleLocationInsert)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, handleProfileUpdate)
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(locationChannel);
+    };
+  }, [user, queryClient, queryKey]);
+  
+  const childrenWithLocations = childrenLocations.filter(c => c.latitude && c.longitude);
 
   return (
     <div className="relative border rounded-lg h-[60vh] w-full overflow-hidden">
-      {isLocating && (
+      {isLoading && (
         <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center z-[1000] rounded-lg">
           <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
-          <p className="text-muted-foreground">Getting your location...</p>
+          <p className="text-muted-foreground">Loading children's locations...</p>
         </div>
       )}
       <MapContainer
-        center={position}
-        zoom={13}
+        center={[51.505, -0.09]} // Default center, will be updated by MapUpdater
+        zoom={2}
         scrollWheelZoom={true}
         style={{ height: '100%', width: '100%' }}
-        ref={mapRef}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        <Marker position={position}>
-          <Popup>Your location</Popup>
-        </Marker>
+        <MapUpdater childrenLocations={childrenLocations} />
+        {childrenWithLocations.map(child => (
+          <Marker
+            key={child.id}
+            position={[child.latitude!, child.longitude!]}
+            icon={createAvatarIcon(child)}
+          >
+            <Popup>
+              <div className="font-semibold">{child.full_name || 'Unnamed Child'}</div>
+              <div className="text-xs text-muted-foreground">
+                Last seen: {child.recorded_at ? new Date(child.recorded_at).toLocaleString() : 'N/A'}
+              </div>
+            </Popup>
+          </Marker>
+        ))}
       </MapContainer>
     </div>
   );

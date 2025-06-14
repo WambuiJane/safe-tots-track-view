@@ -192,6 +192,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_children_latest_locations: {
+        Args: { p_parent_id: string }
+        Returns: {
+          id: string
+          full_name: string
+          avatar_url: string
+          latitude: number
+          longitude: number
+          recorded_at: string
+        }[]
+      }
       is_parent_of: {
         Args: { _parent_id: string; _child_id: string }
         Returns: boolean
