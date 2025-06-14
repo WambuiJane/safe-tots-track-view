@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -26,8 +27,6 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route element={<ProtectedRoute />}>
               <Route path="/dashboard" element={<Dashboard />} />
-            </Route>
-            <Route element={<ProtectedRoute />}>
               <Route path="/child-dashboard" element={
                 <ChildRoute>
                   <ChildDashboard />

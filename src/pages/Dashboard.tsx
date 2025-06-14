@@ -8,8 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import ChildrenManager from '@/components/ChildrenManager';
 import Map from '@/components/Map';
 import AlertsPanel from '@/components/AlertsPanel';
-import { Card } from '@/components/ui/card';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 const fetchProfile = async (userId: string) => {
   if (!userId) return null;
@@ -38,14 +37,7 @@ const Dashboard = () => {
     enabled: !!user,
   });
 
-  // Redirect children to their own dashboard
-  useEffect(() => {
-    console.log('Dashboard - Profile data:', profile);
-    if (profile?.user_role === 'child') {
-      console.log('Redirecting child to child dashboard');
-      navigate('/child-dashboard', { replace: true });
-    }
-  }, [profile, navigate]);
+  console.log('Dashboard - Profile data:', profile);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -57,18 +49,6 @@ const Dashboard = () => {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Skeleton className="h-8 w-48" />
-      </div>
-    );
-  }
-
-  // Show loading if child (will redirect)
-  if (profile?.user_role === 'child') {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-2 text-muted-foreground">Redirecting to child dashboard...</p>
-        </div>
       </div>
     );
   }
