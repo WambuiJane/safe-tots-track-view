@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -43,9 +44,19 @@ const AddChildDialog = () => {
 
   const addChildMutation = useMutation({
     mutationFn: async (values: AddChildFormValues) => {
+      console.log('Frontend form values:', values);
+      console.log('Parent user ID:', parentUser?.id);
+      
       const { data, error } = await supabase.functions.invoke('invite-child', {
-        body: { email: values.email, fullName: values.fullName },
+        body: { 
+          email: values.email, 
+          fullName: values.fullName,
+          parentId: parentUser?.id 
+        },
       });
+
+      console.log('Edge function response:', data);
+      console.log('Edge function error:', error);
 
       if (error) {
         // This handles network errors or function invocation errors
@@ -62,15 +73,18 @@ const AddChildDialog = () => {
     onSuccess: () => {
       toast.success('Child invited successfully!');
       queryClient.invalidateQueries({ queryKey: ['children', parentUser?.id] });
+      queryClient.invalidateQueries({ queryKey: ['childrenLocations', parentUser?.id] });
       setIsOpen(false);
       form.reset();
     },
     onError: (error: Error) => {
+      console.error('Mutation error:', error);
       toast.error(error.message);
     },
   });
 
   const onSubmit = (values: AddChildFormValues) => {
+    console.log('Form submitted with values:', values);
     addChildMutation.mutate(values);
   };
 

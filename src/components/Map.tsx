@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -89,7 +88,13 @@ const Map = ({ selectedChildId, setSelectedChildId }: MapProps) => {
     queryKey,
     queryFn: async () => {
       if (!user) return [];
+      console.log('Fetching children locations for parent ID:', user.id);
+      
       const { data, error } = await supabase.rpc('get_children_latest_locations', { p_parent_id: user.id });
+      
+      console.log('Children locations query result:', data);
+      console.log('Children locations query error:', error);
+      
       if (error) {
         console.error("Error fetching children locations:", error);
         throw error;
@@ -98,6 +103,9 @@ const Map = ({ selectedChildId, setSelectedChildId }: MapProps) => {
     },
     enabled: !!user,
   });
+
+  console.log('Current children locations state:', childrenLocations);
+  console.log('Children with locations:', childrenLocations.filter(c => c.latitude && c.longitude));
 
   useEffect(() => {
     if (!user) return;
@@ -189,7 +197,12 @@ const Map = ({ selectedChildId, setSelectedChildId }: MapProps) => {
                   ))}
                 </ul>
               ) : (
-                <p className="text-xs text-muted-foreground px-1">No children with location data found.</p>
+                <div className="text-xs text-muted-foreground px-1">
+                  <p>No children with location data found.</p>
+                  <p className="mt-1">Debug info:</p>
+                  <p>Total children: {childrenLocations.length}</p>
+                  <p>With locations: {childrenWithLocations.length}</p>
+                </div>
               )}
               {selectedChildId && (
                 <Button variant="outline" size="sm" className="mt-2 w-full" onClick={() => setSelectedChildId(null)}>
