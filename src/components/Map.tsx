@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Loader2, User, MapPin } from 'lucide-react';
@@ -42,6 +42,11 @@ const createAvatarIcon = (child: ChildLocation) => {
   });
 };
 
+type MapProps = {
+  selectedChildId: string | null;
+  setSelectedChildId: (id: string | null) => void;
+};
+
 const MapUpdater = ({ childrenLocations, selectedChildId, openPopup }: { childrenLocations: ChildLocation[], selectedChildId: string | null, openPopup: (childId: string) => void }) => {
   const map = useMap();
   useEffect(() => {
@@ -73,11 +78,10 @@ const MapUpdater = ({ childrenLocations, selectedChildId, openPopup }: { childre
   return null;
 };
 
-const Map = () => {
+const Map = ({ selectedChildId, setSelectedChildId }: MapProps) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const queryKey = ['childrenLocations', user?.id];
-  const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
   const markerRefs = useRef<{ [key: string]: L.Marker | null }>({});
 
   const { data: childrenLocations = [], isLoading } = useQuery({

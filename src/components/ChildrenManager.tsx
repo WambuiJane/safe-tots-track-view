@@ -22,7 +22,11 @@ const fetchChildren = async () => {
     return data;
 }
 
-const ChildrenManager = () => {
+type ChildrenManagerProps = {
+    setSelectedChildId: (id: string | null) => void;
+};
+
+const ChildrenManager = ({ setSelectedChildId }: ChildrenManagerProps) => {
     const { user } = useAuth();
     const { data: children, isLoading, isError } = useQuery({
         queryKey: ['children', user?.id],
@@ -42,7 +46,7 @@ const ChildrenManager = () => {
                 </div>
             </div>
             <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" disabled><MapPin className="h-4 w-4 mr-2" /> View on Map</Button>
+                <Button variant="outline" size="sm" onClick={() => setSelectedChildId(child.id)}><MapPin className="h-4 w-4 mr-2" /> View on Map</Button>
                 <Button variant="ghost" size="sm" disabled><Shield className="h-4 w-4 mr-2" /> Settings</Button>
             </div>
         </div>
