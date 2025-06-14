@@ -12,7 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 const fetchUserRole = async (userId: string) => {
   const { data, error } = await supabase
     .from('profiles')
-    .select('user_role')
+    .select('user_role, full_name')
     .eq('id', userId)
     .single();
 
@@ -26,8 +26,10 @@ const fetchUserRole = async (userId: string) => {
 const Auth = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
+  const [needsNameSetup, setNeedsNameSetup] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -36,21 +38,74 @@ const Auth = () => {
   useEffect(() => {
     const handleUserRedirection = async () => {
       if (user) {
-        console.log('User authenticated, checking role for redirection...');
+        console.log('User authenticated, checking role and profile for redirection...');
         const profile = await fetchUserRole(user.id);
         
-        if (profile && profile.user_role === 'child') {
-          console.log('Redirecting child to child dashboard');
-          navigate('/child-dashboard', { replace: true });
-        } else {
-          console.log('Redirecting to parent dashboard');
-          navigate('/dashboard', { replace: true });
+        if (profile) {
+          // Check if child user needs to set up their name
+          if (profile.user_role === 'child' && !profile.full_name) {
+            console.log('Child needs to set up their name');
+            setNeedsNameSetup(true);
+            return;
+          }
+          
+          if (profile.user_role === 'child') {
+            console.log('Redirecting child to child dashboard');
+            navigate('/child-dashboard', { replace: true });
+          } else {
+            console.log('Redirecting to parent dashboard');
+            navigate('/dashboard', { replace: true });
+          }
         }
       }
     };
 
     handleUserRedirection();
   }, [user, navigate]);
+
+  const handleNameSetup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!fullName.trim()) {
+      toast({
+        title: "Name Required",
+        description: "Please enter your name to continue.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ full_name: fullName.trim() })
+        .eq('id', user!.id);
+
+      if (error) {
+        console.error('Error updating profile:', error);
+        toast({
+          title: "Error",
+          description: "Failed to update your profile. Please try again.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Welcome!",
+          description: "Your profile has been set up successfully.",
+        });
+        navigate('/child-dashboard', { replace: true });
+      }
+    } catch (error) {
+      console.error('Unexpected error:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,6 +151,40 @@ const Auth = () => {
     
     setLoading(false);
   };
+
+  // If user is already authenticated but needs name setup
+  if (user && needsNameSetup) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Card className="w-full max-w-sm">
+          <CardHeader>
+            <CardTitle>Complete Your Profile</CardTitle>
+            <CardDescription>
+              Please enter your name to get started with Safe Tots Track.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleNameSetup} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="fullName">Your Name</Label>
+                <Input
+                  id="fullName"
+                  type="text"
+                  placeholder="Enter your full name"
+                  required
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? 'Setting up...' : 'Complete Setup'}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   // If user is already authenticated, show loading while redirecting
   if (user) {
