@@ -5,12 +5,14 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Loader2 } from 'lucide-react';
 
 const Map = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [mapboxToken, setMapboxToken] = useState(() => localStorage.getItem('mapboxToken') || '');
   const [tokenInput, setTokenInput] = useState('');
+  const [isLocating, setIsLocating] = useState(true);
 
   useEffect(() => {
     if (!mapboxToken || !mapContainer.current) return;
@@ -19,14 +21,42 @@ const Map = () => {
     
     if (map.current) return; // initialize map only once
 
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/streets-v12',
-      center: [-74.5, 40],
-      zoom: 9,
-    });
-    
-    map.current.addControl(new mapboxgl.NavigationControl());
+    const initializeMap = (center: [number, number], zoom: number) => {
+      if (!mapContainer.current) return;
+      map.current = new mapboxgl.Map({
+        container: mapContainer.current,
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: center,
+        zoom: zoom,
+      });
+      
+      map.current.addControl(new mapboxgl.NavigationControl());
+
+      // Add a marker at the center
+      new mapboxgl.Marker()
+          .setLngLat(center)
+          .addTo(map.current);
+      
+      setIsLocating(false);
+    };
+
+    if (navigator.geolocation) {
+      setIsLocating(true);
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          initializeMap([position.coords.longitude, position.coords.latitude], 13);
+        },
+        (error) => {
+          console.error("Geolocation error: ", error.message);
+          // Fallback to default location
+          initializeMap([-74.5, 40], 9);
+        }
+      );
+    } else {
+      console.log("Geolocation is not supported by this browser.");
+      // Fallback to default location
+      initializeMap([-74.5, 40], 9);
+    }
 
     return () => {
       map.current?.remove();
@@ -69,7 +99,15 @@ const Map = () => {
   }
 
   return (
-    <div ref={mapContainer} className="border rounded-lg h-[60vh] w-full" />
+    <div className="relative border rounded-lg h-[60vh] w-full">
+      {isLocating && (
+        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center z-10 rounded-lg">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
+          <p className="text-muted-foreground">Getting your location...</p>
+        </div>
+      )}
+      <div ref={mapContainer} className="h-full w-full" />
+    </div>
   );
 };
 
