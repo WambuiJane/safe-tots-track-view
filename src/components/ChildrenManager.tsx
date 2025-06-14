@@ -5,10 +5,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { User, Shield, MapPin } from "lucide-react";
+import { User, MapPin, Settings } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tables } from "@/integrations/supabase/types";
 import AddChildDialog from "./AddChildDialog";
+import ChildSettingsSheet from "./ChildSettingsSheet";
 
 // The RLS policy on 'profiles' ensures parents can only see their own children.
 const fetchChildren = async () => {
@@ -48,8 +49,14 @@ const ChildrenManager = ({ setSelectedChildId }: ChildrenManagerProps) => {
                 </div>
             </div>
             <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => setSelectedChildId(child.id)}><MapPin className="h-4 w-4 mr-2" /> View on Map</Button>
-                <Button variant="ghost" size="sm" disabled><Shield className="h-4 w-4 mr-2" /> Settings</Button>
+                <Button variant="outline" size="sm" onClick={() => setSelectedChildId(child.id)}>
+                    <MapPin className="h-4 w-4 mr-2" /> View on Map
+                </Button>
+                <ChildSettingsSheet child={child}>
+                    <Button variant="ghost" size="sm">
+                        <Settings className="h-4 w-4 mr-2" /> Settings
+                    </Button>
+                </ChildSettingsSheet>
             </div>
         </div>
     );
