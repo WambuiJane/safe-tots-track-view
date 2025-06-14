@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -44,7 +45,7 @@ const createAvatarIcon = (child: ChildLocation) => {
 
 type MapProps = {
   selectedChildId: string | null;
-  setSelectedChildId: (id: string | null) => void;
+  setSelectedChildId: React.Dispatch<React.SetStateAction<string | null>>;
 };
 
 const MapUpdater = ({ childrenLocations, selectedChildId, openPopup }: { childrenLocations: ChildLocation[], selectedChildId: string | null, openPopup: (childId: string) => void }) => {
