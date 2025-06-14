@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,6 +7,21 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from "@/components/ui/use-toast";
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+
+const fetchUserRole = async (userId: string) => {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('user_role')
+    .eq('id', userId)
+    .single();
+
+  if (error) {
+    console.error('Error fetching user role:', error);
+    return null;
+  }
+  return data;
+};
 
 const Auth = () => {
   const [email, setEmail] = useState('');
@@ -15,6 +30,27 @@ const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  // Handle redirection based on user role when user is authenticated
+  useEffect(() => {
+    const handleUserRedirection = async () => {
+      if (user) {
+        console.log('User authenticated, checking role for redirection...');
+        const profile = await fetchUserRole(user.id);
+        
+        if (profile && profile.user_role === 'child') {
+          console.log('Redirecting child to child dashboard');
+          navigate('/child-dashboard', { replace: true });
+        } else {
+          console.log('Redirecting to parent dashboard');
+          navigate('/dashboard', { replace: true });
+        }
+      }
+    };
+
+    handleUserRedirection();
+  }, [user, navigate]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +70,7 @@ const Auth = () => {
           data: {
             user_role: 'parent',
           },
-          emailRedirectTo: `${window.location.origin}/`,
+          emailRedirectTo: `${window.location.origin}/auth`,
         },
       });
       error = signUpError;
@@ -45,11 +81,9 @@ const Auth = () => {
         });
       }
     } else {
-      const { data, error: signInError } = await supabase.auth.signInWithPassword(authData);
+      const { error: signInError } = await supabase.auth.signInWithPassword(authData);
       error = signInError;
-       if (data.user) {
-        navigate('/dashboard');
-      }
+      // Redirection will be handled by the useEffect above
     }
 
     if (error) {
@@ -62,6 +96,18 @@ const Auth = () => {
     
     setLoading(false);
   };
+
+  // If user is already authenticated, show loading while redirecting
+  if (user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-2 text-muted-foreground">Redirecting to your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
