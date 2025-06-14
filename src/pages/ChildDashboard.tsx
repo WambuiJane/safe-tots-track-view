@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { Bell, User, MapPin } from 'lucide-react';
+import { Bell, User, MapPin, Navigation } from 'lucide-react';
 import SOSButton from '@/components/SOSButton';
 import QuickMessages from '@/components/QuickMessages';
 import { useNavigate } from 'react-router-dom';
@@ -29,6 +29,8 @@ const ChildDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [isShakeEnabled, setIsShakeEnabled] = useState(false);
+  const [isLocationEnabled, setIsLocationEnabled] = useState(false);
+  const [locationWatchId, setLocationWatchId] = useState<number | null>(null);
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ['profile', user?.id],
@@ -43,8 +45,82 @@ const ChildDashboard = () => {
     }
   }, [profile, navigate]);
 
+  // Auto-request location when component mounts
   useEffect(() => {
-    // Shake detection for emergency alert
+    if (profile?.user_role === 'child' && !isLocationEnabled) {
+      requestLocationPermission();
+    }
+  }, [profile, isLocationEnabled]);
+
+  const requestLocationPermission = async () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not supported by this browser');
+      return;
+    }
+
+    try {
+      // Request permission first
+      const permission = await navigator.permissions.query({ name: 'geolocation' });
+      
+      if (permission.state === 'denied') {
+        toast.error('Location permission denied. Please enable in browser settings.');
+        return;
+      }
+
+      // Start watching position
+      const watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          console.log('Location updated:', { latitude, longitude });
+          
+          // Store location in database
+          supabase
+            .from('location_history')
+            .insert({
+              child_id: user!.id,
+              latitude,
+              longitude,
+              recorded_at: new Date().toISOString()
+            })
+            .then(({ error }) => {
+              if (error) {
+                console.error('Error storing location:', error);
+              } else {
+                console.log('Location stored successfully');
+              }
+            });
+        },
+        (error) => {
+          console.error('Geolocation error:', error);
+          toast.error('Unable to get location: ' + error.message);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 60000 // 1 minute
+        }
+      );
+
+      setLocationWatchId(watchId);
+      setIsLocationEnabled(true);
+      toast.success('Location tracking enabled');
+    } catch (error) {
+      console.error('Error requesting location:', error);
+      toast.error('Failed to enable location tracking');
+    }
+  };
+
+  const stopLocationTracking = () => {
+    if (locationWatchId !== null) {
+      navigator.geolocation.clearWatch(locationWatchId);
+      setLocationWatchId(null);
+      setIsLocationEnabled(false);
+      toast.success('Location tracking disabled');
+    }
+  };
+
+  // Shake detection for emergency alert
+  useEffect(() => {
     let shakeTimeout: NodeJS.Timeout;
     let lastShakeTime = 0;
     let shakeCount = 0;
@@ -104,11 +180,15 @@ const ChildDashboard = () => {
   };
 
   const handleLogout = async () => {
+    // Stop location tracking before logout
+    if (locationWatchId !== null) {
+      navigator.geolocation.clearWatch(locationWatchId);
+    }
     await supabase.auth.signOut();
     navigate('/');
   };
 
-  const requestPermissions = async () => {
+  const requestShakePermissions = async () => {
     if ('DeviceMotionEvent' in window && typeof (DeviceMotionEvent as any).requestPermission === 'function') {
       try {
         const permission = await (DeviceMotionEvent as any).requestPermission();
@@ -160,6 +240,34 @@ const ChildDashboard = () => {
           <Card className="md:col-span-2">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
+                <Navigation className="h-5 w-5 text-blue-500" />
+                Location Tracking
+              </CardTitle>
+              <CardDescription>
+                Share your location with your parents for safety
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between p-4 border rounded-lg">
+                <div>
+                  <h4 className="font-medium">Location Sharing</h4>
+                  <p className="text-sm text-muted-foreground">
+                    {isLocationEnabled ? 'Your location is being shared with your parents' : 'Enable location sharing for safety'}
+                  </p>
+                </div>
+                <Button
+                  onClick={isLocationEnabled ? stopLocationTracking : requestLocationPermission}
+                  variant={isLocationEnabled ? "secondary" : "default"}
+                >
+                  {isLocationEnabled ? 'Enabled' : 'Enable Location'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="md:col-span-2">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
                 <Bell className="h-5 w-5 text-red-500" />
                 Emergency Features
               </CardTitle>
@@ -178,7 +286,7 @@ const ChildDashboard = () => {
                   </p>
                 </div>
                 <Button
-                  onClick={requestPermissions}
+                  onClick={requestShakePermissions}
                   disabled={isShakeEnabled}
                   variant={isShakeEnabled ? "secondary" : "default"}
                 >

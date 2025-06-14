@@ -40,7 +40,9 @@ const Dashboard = () => {
 
   // Redirect children to their own dashboard
   useEffect(() => {
+    console.log('Dashboard - Profile data:', profile);
     if (profile?.user_role === 'child') {
+      console.log('Redirecting child to child dashboard');
       navigate('/child-dashboard', { replace: true });
     }
   }, [profile, navigate]);
@@ -51,10 +53,22 @@ const Dashboard = () => {
   };
 
   // Show loading while checking user role
-  if (isLoadingProfile || profile?.user_role === 'child') {
+  if (isLoadingProfile) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Skeleton className="h-8 w-48" />
+      </div>
+    );
+  }
+
+  // Show loading if child (will redirect)
+  if (profile?.user_role === 'child') {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-2 text-muted-foreground">Redirecting to child dashboard...</p>
+        </div>
       </div>
     );
   }
