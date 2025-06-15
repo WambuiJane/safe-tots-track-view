@@ -26,7 +26,18 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-purple-100 via-blue-100 to-green-100 px-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-purple-100 via-blue-100 to-green-100 px-4 relative">
+      <header className="absolute top-0 right-0 p-4 md:p-6">
+        <Link to="/auth">
+          <Button 
+            size="lg" 
+            className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white shadow-2xl hover:shadow-3xl transform hover:scale-105 transition-all duration-200"
+          >
+            Get Started Today
+          </Button>
+        </Link>
+      </header>
+
       <div className="text-center max-w-4xl mx-auto">
         <div className="mb-8">
           <ShieldCheck className="mx-auto h-16 w-16 md:h-20 md:w-20 text-purple-600 mb-6" />
@@ -59,15 +70,6 @@ const Index = () => {
           </div>
         </div>
 
-        <Link to="/auth" className="inline-block">
-          <Button 
-            size="lg" 
-            className="text-lg px-8 py-6 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white shadow-2xl hover:shadow-3xl transform hover:scale-105 transition-all duration-200"
-          >
-            Get Started Today
-          </Button>
-        </Link>
-        
         <p className="text-sm text-gray-600 mt-6">
           Join thousands of parents who trust Linda Mtoto App to keep their children safe
         </p>
