@@ -29,6 +29,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
+  const [isChildSettingsOpen, setIsChildSettingsOpen] = useState(false);
 
   const { data: profile, isLoading: isLoadingProfile } = useQuery({
     queryKey: ['profile', user?.id],
@@ -70,8 +71,13 @@ const Dashboard = () => {
         
         <div className="grid gap-8">
           <AlertsPanel />
-          <ChildrenManager setSelectedChildId={setSelectedChildId} />
-          <Map selectedChildId={selectedChildId} setSelectedChildId={setSelectedChildId} />
+          <ChildrenManager 
+            setSelectedChildId={setSelectedChildId} 
+            onChildSettingsChange={setIsChildSettingsOpen}
+          />
+          {!isChildSettingsOpen && (
+            <Map selectedChildId={selectedChildId} setSelectedChildId={setSelectedChildId} />
+          )}
         </div>
       </main>
     </div>

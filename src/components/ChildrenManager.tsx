@@ -1,95 +1,143 @@
 
-import React from "react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { User, MapPin, Settings } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Tables } from "@/integrations/supabase/types";
-import AddChildDialog from "./AddChildDialog";
-import ChildSettingsSheet from "./ChildSettingsSheet";
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
+import { Users, Plus, Settings, User } from 'lucide-react';
+import AddChildDialog from './AddChildDialog';
+import ChildSettingsSheet from './ChildSettingsSheet';
+import { toast } from 'sonner';
 
-// The RLS policy on 'profiles' ensures parents can only see their own children.
-const fetchChildren = async () => {
-    const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_role', 'child');
-
-    if (error) {
-        console.error("Error fetching children:", error);
-        throw error;
-    }
-    return data;
-}
-
-type ChildrenManagerProps = {
-    setSelectedChildId: React.Dispatch<React.SetStateAction<string | null>>;
+type Child = {
+  id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  latitude?: number;
+  longitude?: number;
+  recorded_at?: string;
 };
 
-const ChildrenManager = ({ setSelectedChildId }: ChildrenManagerProps) => {
-    const { user } = useAuth();
-    const { data: children, isLoading, isError } = useQuery({
-        queryKey: ['children', user?.id],
-        queryFn: fetchChildren,
-        enabled: !!user,
-    });
+type ChildrenManagerProps = {
+  setSelectedChildId: React.Dispatch<React.SetStateAction<string | null>>;
+  onChildSettingsChange?: (isOpen: boolean) => void;
+};
 
-    const ChildCard = ({ child }: { child: Tables<'profiles'> }) => (
-        <div className="border rounded-lg p-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
-            <div className="flex items-center gap-4">
-                <div className="bg-primary/10 p-3 rounded-full">
-                    <User className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                    <p className="font-semibold">{child.full_name || "Unnamed Child"}</p>
-                    <p className="text-sm text-muted-foreground">Status: Safe</p>
-                </div>
-            </div>
-            <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => setSelectedChildId(child.id)}>
-                    <MapPin className="h-4 w-4 mr-2" /> View on Map
-                </Button>
-                <ChildSettingsSheet child={child}>
-                    <Button variant="ghost" size="sm">
-                        <Settings className="h-4 w-4 mr-2" /> Settings
-                    </Button>
-                </ChildSettingsSheet>
-            </div>
-        </div>
-    );
+const ChildrenManager = ({ setSelectedChildId, onChildSettingsChange }: ChildrenManagerProps) => {
+  const { user } = useAuth();
+  const [isAddChildOpen, setIsAddChildOpen] = useState(false);
 
+  const { data: children = [], isLoading } = useQuery({
+    queryKey: ['children', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      
+      const { data, error } = await supabase.rpc('get_children_latest_locations', { p_parent_id: user.id });
+      
+      if (error) {
+        console.error("Error fetching children:", error);
+        toast.error('Failed to load children');
+        throw error;
+      }
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
+  const handleChildClick = (childId: string) => {
+    setSelectedChildId(prevId => prevId === childId ? null : childId);
+  };
+
+  if (isLoading) {
     return (
-        <Card>
-            <CardHeader>
-                <div className="flex flex-wrap gap-4 justify-between items-center">
-                    <div>
-                        <CardTitle>My Children</CardTitle>
-                        <CardDescription>Manage your children's profiles and safety settings.</CardDescription>
-                    </div>
-                    <AddChildDialog />
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-6 w-6" />
+            Children
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3">
+            {[1, 2, 3].map(i => (
+              <Skeleton key={i} className="h-16 w-full" />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Users className="h-6 w-6" />
+          Children
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid gap-3">
+          {children.map((child) => (
+            <div key={child.id} className="flex items-center justify-between p-3 border rounded-lg">
+              <button 
+                onClick={() => handleChildClick(child.id)}
+                className="flex items-center gap-3 flex-1 text-left hover:bg-accent/50 rounded p-2 transition-colors"
+              >
+                {child.avatar_url ? (
+                  <img src={child.avatar_url} alt={child.full_name || ""} className="w-10 h-10 rounded-full object-cover" />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                    <User className="h-6 w-6" />
+                  </div>
+                )}
+                <div>
+                  <p className="font-medium">{child.full_name || 'Unnamed Child'}</p>
+                  {child.latitude && child.longitude ? (
+                    <p className="text-sm text-muted-foreground">
+                      Last seen: {child.recorded_at ? new Date(child.recorded_at).toLocaleString() : 'N/A'}
+                    </p>
+                  ) : (
+                    <Badge variant="outline" className="text-xs">No location data</Badge>
+                  )}
                 </div>
-            </CardHeader>
-            <CardContent>
-                <div className="space-y-4">
-                    {isLoading && (
-                        <>
-                            <Skeleton className="h-20 w-full" />
-                            <Skeleton className="h-20 w-full" />
-                        </>
-                    )}
-                    {isError && <p className="text-destructive text-center py-8">Failed to load children.</p>}
-                    {children && children.length > 0 ? (
-                        children.map(child => <ChildCard key={child.id} child={child} />)
-                    ) : (
-                       !isLoading && !isError && <p className="text-center text-muted-foreground py-8">You haven't added any children yet. Click "Add Child" to get started.</p>
-                    )}
-                </div>
-            </CardContent>
-        </Card>
-    )
-}
+              </button>
+              <ChildSettingsSheet 
+                child={child}
+                onOpenChange={onChildSettingsChange}
+              >
+                <Button variant="ghost" size="icon">
+                  <Settings className="h-4 w-4" />
+                </Button>
+              </ChildSettingsSheet>
+            </div>
+          ))}
+          
+          {children.length === 0 && (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground mb-4">No children added yet</p>
+              <Button onClick={() => setIsAddChildOpen(true)} variant="outline">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Child
+              </Button>
+            </div>
+          )}
+          
+          {children.length > 0 && (
+            <Button onClick={() => setIsAddChildOpen(true)} variant="outline" className="w-full">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Another Child
+            </Button>
+          )}
+        </div>
+        
+        <AddChildDialog isOpen={isAddChildOpen} onOpenChange={setIsAddChildOpen} />
+      </CardContent>
+    </Card>
+  );
+};
 
 export default ChildrenManager;

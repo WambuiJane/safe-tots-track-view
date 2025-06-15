@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from "@/components/ui/use-toast";
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const fetchUserRole = async (userId: string) => {
   const { data, error } = await supabase
@@ -30,6 +31,8 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [needsNameSetup, setNeedsNameSetup] = useState(false);
+  const [needsPasswordSetup, setNeedsPasswordSetup] = useState(false);
+  const [loginType, setLoginType] = useState<'parent' | 'child'>('parent');
   const { toast } = useToast();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -49,7 +52,17 @@ const Auth = () => {
             return;
           }
           
+          // Check if user needs to set up password (invited child)
           if (profile.user_role === 'child') {
+            // Check if this is their first login by checking if they have a password set
+            const { data: session } = await supabase.auth.getSession();
+            if (session?.session?.user?.app_metadata?.provider === 'email' && 
+                !session?.session?.user?.user_metadata?.password_set) {
+              console.log('Child needs to set up password');
+              setNeedsPasswordSetup(true);
+              return;
+            }
+            
             console.log('Redirecting child to child dashboard');
             navigate('/child-dashboard', { replace: true });
           } else {
@@ -62,6 +75,50 @@ const Auth = () => {
 
     handleUserRedirection();
   }, [user, navigate]);
+
+  const handlePasswordSetup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!password || password.length < 6) {
+      toast({
+        title: "Password Required",
+        description: "Please enter a password with at least 6 characters.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: password,
+        data: { password_set: true }
+      });
+
+      if (error) {
+        console.error('Error setting password:', error);
+        toast({
+          title: "Error",
+          description: "Failed to set password. Please try again.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Password Set!",
+          description: "Your password has been set successfully.",
+        });
+        navigate('/child-dashboard', { replace: true });
+      }
+    } catch (error) {
+      console.error('Unexpected error:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleNameSetup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,7 +150,15 @@ const Auth = () => {
           title: "Welcome!",
           description: "Your profile has been set up successfully.",
         });
-        navigate('/child-dashboard', { replace: true });
+        // Check if password also needs to be set
+        const { data: session } = await supabase.auth.getSession();
+        if (session?.session?.user?.app_metadata?.provider === 'email' && 
+            !session?.session?.user?.user_metadata?.password_set) {
+          setNeedsNameSetup(false);
+          setNeedsPasswordSetup(true);
+        } else {
+          navigate('/child-dashboard', { replace: true });
+        }
       }
     } catch (error) {
       console.error('Unexpected error:', error);
@@ -152,6 +217,44 @@ const Auth = () => {
     setLoading(false);
   };
 
+  // If user needs to set up password
+  if (user && needsPasswordSetup) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Card className="w-full max-w-sm">
+          <CardHeader>
+            <CardTitle>Set Your Password</CardTitle>
+            <CardDescription>
+              Please set a password for your account to continue.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handlePasswordSetup} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Enter your password"
+                  required
+                  minLength={6}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Password must be at least 6 characters long
+                </p>
+              </div>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? 'Setting password...' : 'Set Password'}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   // If user is already authenticated but needs name setup
   if (user && needsNameSetup) {
     return (
@@ -200,7 +303,7 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <Card className="w-full max-w-sm">
+      <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>{isSignUp ? 'Create an Account' : 'Welcome Back'}</CardTitle>
           <CardDescription>
@@ -208,6 +311,15 @@ const Auth = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {!isSignUp && (
+            <Tabs value={loginType} onValueChange={(value) => setLoginType(value as 'parent' | 'child')} className="mb-4">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="parent">Parent Login</TabsTrigger>
+                <TabsTrigger value="child">Child Login</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          )}
+          
           <form onSubmit={handleAuth} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -232,7 +344,7 @@ const Auth = () => {
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Processing...' : isSignUp ? 'Sign Up' : 'Sign In'}
+              {loading ? 'Processing...' : isSignUp ? 'Sign Up' : `Sign In as ${loginType}`}
             </Button>
           </form>
           <div className="mt-4 text-center text-sm">

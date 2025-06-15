@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -41,14 +40,19 @@ type Child = {
 type ChildSettingsSheetProps = {
   child: Child;
   children: React.ReactNode;
+  onOpenChange?: (isOpen: boolean) => void;
 };
 
-const ChildSettingsSheet = ({ child, children }: ChildSettingsSheetProps) => {
+const ChildSettingsSheet = ({ child, children, onOpenChange }: ChildSettingsSheetProps) => {
   const queryClient = useQueryClient();
   const [fullName, setFullName] = useState(child.full_name || '');
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    onOpenChange?.(open);
+  }, [open, onOpenChange]);
 
   const handleUpdateChild = async () => {
     if (!fullName.trim()) {
