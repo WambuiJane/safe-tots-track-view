@@ -29,7 +29,7 @@ const Index = () => {
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-primary/10 to-background">
       <div className="text-center p-4">
         <ShieldCheck className="mx-auto h-16 w-16 text-primary mb-4" />
-        <h1 className="text-4xl md:text-5xl font-bold mb-4 text-primary-foreground bg-primary px-4 py-2 rounded-lg inline-block">Safe Tots Track</h1>
+        <h1 className="text-4xl md:text-5xl font-bold mb-4 text-primary-foreground bg-primary px-4 py-2 rounded-lg inline-block">Linda Mtoto App</h1>
         <p className="text-lg md:text-xl text-muted-foreground mt-4 max-w-2xl mx-auto">
           The ultimate peace of mind for parents. Real-time location tracking, smart alerts, and safety features for your children.
         </p>

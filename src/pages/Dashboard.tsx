@@ -1,3 +1,4 @@
+
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
@@ -56,7 +57,7 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       <header className="p-4 border-b flex justify-between items-center">
-        <h1 className="text-xl font-bold">Safe Tots Track</h1>
+        <h1 className="text-xl font-bold">Linda Mtoto App</h1>
         <div className="flex items-center gap-4">
           {isLoadingProfile ? (
             <Skeleton className="h-6 w-24" />

@@ -1,5 +1,5 @@
 
-# Safe Tots Track
+# Linda Mtoto App
 
 A real-time child safety and location tracking application that enables parents to monitor their children's whereabouts and receive emergency alerts. Built with modern web technologies and Supabase for backend services.
 
@@ -168,7 +168,7 @@ quick_messages       # Child status updates
 1. **Clone the repository**
 ```bash
 git clone <repository-url>
-cd safe-tots-track
+cd linda-mtoto-app
 ```
 
 2. **Install dependencies**
