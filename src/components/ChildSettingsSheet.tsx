@@ -157,23 +157,6 @@ const ChildSettingsSheet = ({ child, children, onOpenChange }: ChildSettingsShee
         return;
       }
 
-      // Step 7: Delete the user from Supabase Auth (this requires admin privileges)
-      // Since we can't delete auth users from the client side, we'll use a function call
-      try {
-        const { error: authError } = await supabase.rpc('delete_user', { 
-          user_id: child.id 
-        });
-        
-        if (authError) {
-          console.error('Error deleting auth user:', authError);
-          // This might fail if the function doesn't exist, but the profile is already deleted
-          console.log('Auth user deletion failed, but profile was successfully removed');
-        }
-      } catch (authDeleteError) {
-        console.error('Auth deletion not available:', authDeleteError);
-        // This is expected if the RPC function doesn't exist
-      }
-
       console.log('Child deletion completed successfully');
       toast.success('Child removed successfully');
       setOpen(false);
@@ -241,7 +224,7 @@ const ChildSettingsSheet = ({ child, children, onOpenChange }: ChildSettingsShee
                       <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                       <AlertDialogDescription>
                         This will permanently delete {child.full_name || 'this child'} and all their data including location history, alerts, geofences, and messages. 
-                        This action cannot be undone and will remove the child's account entirely.
+                        This action cannot be undone and will remove the child's profile from the app.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
