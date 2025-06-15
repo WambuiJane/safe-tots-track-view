@@ -48,37 +48,52 @@ const Dashboard = () => {
   // Show loading while checking user role
   if (isLoadingProfile) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Skeleton className="h-8 w-48" />
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-green-50 flex items-center justify-center">
+        <div className="text-center">
+          <Skeleton className="h-8 w-48 mx-auto mb-4" />
+          <div className="animate-pulse text-gray-500">Loading your dashboard...</div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="p-4 border-b flex justify-between items-center">
-        <h1 className="text-xl font-bold">Linda Mtoto App</h1>
-        <div className="flex items-center gap-4">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-green-50">
+      <header className="p-4 border-b bg-white/80 backdrop-blur-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-sm">
+        <h1 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">Linda Mtoto App</h1>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
           {isLoadingProfile ? (
             <Skeleton className="h-6 w-24" />
           ) : (
-            <span>{profile?.full_name || user?.email}</span>
+            <span className="text-gray-700">
+              Welcome, <span className="font-semibold text-purple-600">{profile?.full_name || user?.email}</span>
+            </span>
           )}
-          <Button onClick={handleLogout} variant="outline">Logout</Button>
+          <Button onClick={handleLogout} variant="outline" className="border-purple-200 hover:bg-purple-50">Logout</Button>
         </div>
       </header>
       <main className="p-4 md:p-8">
-        <h2 className="text-3xl font-bold mb-8">Parent Dashboard</h2>
-        
-        <div className="grid gap-8">
-          <AlertsPanel />
-          <ChildrenManager 
-            setSelectedChildId={setSelectedChildId} 
-            onChildSettingsChange={setIsChildSettingsOpen}
-          />
-          {!isChildSettingsOpen && (
-            <Map selectedChildId={selectedChildId} setSelectedChildId={setSelectedChildId} />
-          )}
+        <div className="max-w-7xl mx-auto">
+          <h2 className="text-2xl md:text-3xl font-bold mb-8 text-center bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+            Parent Dashboard
+          </h2>
+          
+          <div className="grid gap-8">
+            <div className="bg-white/70 backdrop-blur-sm rounded-xl shadow-lg border border-purple-100">
+              <AlertsPanel />
+            </div>
+            <div className="bg-white/70 backdrop-blur-sm rounded-xl shadow-lg border border-blue-100">
+              <ChildrenManager 
+                setSelectedChildId={setSelectedChildId} 
+                onChildSettingsChange={setIsChildSettingsOpen}
+              />
+            </div>
+            {!isChildSettingsOpen && (
+              <div className="bg-white/70 backdrop-blur-sm rounded-xl shadow-lg border border-green-100">
+                <Map selectedChildId={selectedChildId} setSelectedChildId={setSelectedChildId} />
+              </div>
+            )}
+          </div>
         </div>
       </main>
     </div>

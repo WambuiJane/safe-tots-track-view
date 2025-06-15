@@ -184,11 +184,23 @@ const Auth = () => {
     let error;
 
     if (isSignUp) {
+      // Validate full name for parent signup
+      if (!fullName.trim()) {
+        toast({
+          title: "Name Required",
+          description: "Please enter your full name to create an account.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
       const { error: signUpError } = await supabase.auth.signUp({
         ...authData,
         options: {
           data: {
             user_role: 'parent',
+            full_name: fullName.trim(),
           },
           emailRedirectTo: `${window.location.origin}/auth`,
         },
@@ -292,37 +304,53 @@ const Auth = () => {
   // If user is already authenticated, show loading while redirecting
   if (user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-100 via-blue-100 to-green-100">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-2 text-muted-foreground">Redirecting to your dashboard...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
+          <p className="mt-2 text-gray-700">Redirecting to your dashboard...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>{isSignUp ? 'Create an Account' : 'Welcome Back'}</CardTitle>
-          <CardDescription>
-            {isSignUp ? 'Enter your details to sign up as a parent.' : 'Sign in to access your dashboard.'}
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-100 via-blue-100 to-green-100 p-4">
+      <Card className="w-full max-w-md shadow-2xl border-0 bg-white/90 backdrop-blur-sm">
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+            {isSignUp ? 'Create Parent Account' : 'Welcome Back'}
+          </CardTitle>
+          <CardDescription className="text-gray-600">
+            {isSignUp ? 'Join Linda Mtoto App to keep your children safe.' : 'Sign in to access your dashboard.'}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {!isSignUp && (
-            <Tabs value={loginType} onValueChange={(value) => setLoginType(value as 'parent' | 'child')} className="mb-4">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="parent">Parent Login</TabsTrigger>
-                <TabsTrigger value="child">Child Login</TabsTrigger>
+            <Tabs value={loginType} onValueChange={(value) => setLoginType(value as 'parent' | 'child')} className="mb-6">
+              <TabsList className="grid w-full grid-cols-2 bg-gray-100">
+                <TabsTrigger value="parent" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-blue-500 data-[state=active]:text-white">Parent Login</TabsTrigger>
+                <TabsTrigger value="child" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-500 data-[state=active]:text-white">Child Login</TabsTrigger>
               </TabsList>
             </Tabs>
           )}
           
           <form onSubmit={handleAuth} className="space-y-4">
+            {isSignUp && (
+              <div className="space-y-2">
+                <Label htmlFor="fullName" className="text-gray-700">Full Name</Label>
+                <Input
+                  id="fullName"
+                  type="text"
+                  placeholder="Enter your full name"
+                  required
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="border-gray-200 focus:border-purple-500 focus:ring-purple-500"
+                />
+              </div>
+            )}
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="text-gray-700">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -330,10 +358,11 @@ const Auth = () => {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                className="border-gray-200 focus:border-purple-500 focus:ring-purple-500"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password" className="text-gray-700">Password</Label>
               <Input
                 id="password"
                 type="password"
@@ -341,17 +370,22 @@ const Auth = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 minLength={6}
+                className="border-gray-200 focus:border-purple-500 focus:ring-purple-500"
               />
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Processing...' : isSignUp ? 'Sign Up' : `Sign In as ${loginType}`}
+            <Button 
+              type="submit" 
+              className="w-full bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white shadow-lg" 
+              disabled={loading}
+            >
+              {loading ? 'Processing...' : isSignUp ? 'Create Account' : `Sign In as ${loginType}`}
             </Button>
           </form>
-          <div className="mt-4 text-center text-sm">
+          <div className="mt-6 text-center text-sm">
             {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
             <button
               onClick={() => setIsSignUp(!isSignUp)}
-              className="underline"
+              className="text-purple-600 hover:text-purple-800 underline font-medium"
             >
               {isSignUp ? 'Sign In' : 'Sign Up'}
             </button>

@@ -266,21 +266,21 @@ const ChildDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="p-4 border-b flex justify-between items-center">
-        <h1 className="text-xl font-bold">Safe Tots Track - Child</h1>
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-green-50">
+      <header className="p-4 border-b bg-white/80 backdrop-blur-sm flex justify-between items-center shadow-sm">
+        <h1 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">Linda Mtoto App - Child</h1>
         <div className="flex items-center gap-4">
-          <span>Welcome, {profile?.full_name || 'Child'}</span>
-          <Button onClick={handleLogout} variant="outline">Logout</Button>
+          <span className="text-gray-700">Welcome, {profile?.full_name || 'Child'}</span>
+          <Button onClick={handleLogout} variant="outline" className="border-purple-200 hover:bg-purple-50">Logout</Button>
         </div>
       </header>
       
       <main className="p-4 md:p-8 max-w-4xl mx-auto">
-        <h2 className="text-3xl font-bold mb-8">Stay Safe Dashboard</h2>
+        <h2 className="text-2xl md:text-3xl font-bold mb-8 text-center bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">Stay Safe Dashboard</h2>
         
         <div className="grid gap-6 md:grid-cols-2">
           {/* SOS Emergency Button */}
-          <Card className="md:col-span-2">
+          <Card className="md:col-span-2 border-red-200 bg-gradient-to-r from-red-50 to-pink-50 shadow-lg hover:shadow-xl transition-shadow">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-red-600">
                 <Bell className="h-6 w-6" />
@@ -296,7 +296,7 @@ const ChildDashboard = () => {
           </Card>
 
           {/* Fake Call Button */}
-          <Card>
+          <Card className="border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 shadow-lg hover:shadow-xl transition-shadow">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Phone className="h-5 w-5 text-green-600" />
@@ -309,7 +309,7 @@ const ChildDashboard = () => {
             <CardContent>
               <Button 
                 onClick={triggerFakeCall}
-                className="w-full h-16 text-lg bg-green-600 hover:bg-green-700"
+                className="w-full h-16 text-lg bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 shadow-md"
               >
                 📞 Fake Call from Mom
               </Button>
@@ -317,7 +317,7 @@ const ChildDashboard = () => {
           </Card>
 
           {/* Shake to Alert */}
-          <Card>
+          <Card className="border-orange-200 bg-gradient-to-r from-orange-50 to-yellow-50 shadow-lg hover:shadow-xl transition-shadow">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Bell className="h-5 w-5 text-orange-500" />
@@ -332,7 +332,7 @@ const ChildDashboard = () => {
                 onClick={requestShakePermissions}
                 disabled={isShakeEnabled}
                 variant={isShakeEnabled ? "secondary" : "default"}
-                className="w-full"
+                className={`w-full ${!isShakeEnabled ? 'bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600' : 'bg-gray-100'} shadow-md`}
               >
                 {isShakeEnabled ? '✅ Shake Alert Enabled' : 'Enable Shake Alert'}
               </Button>
@@ -340,7 +340,7 @@ const ChildDashboard = () => {
           </Card>
 
           {/* Location Tracking */}
-          <Card className="md:col-span-2">
+          <Card className="md:col-span-2 border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 shadow-lg hover:shadow-xl transition-shadow">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Navigation className="h-5 w-5 text-blue-500" />
@@ -351,16 +351,17 @@ const ChildDashboard = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center justify-between p-4 border rounded-lg">
-                <div>
-                  <h4 className="font-medium">Live Location</h4>
-                  <p className="text-sm text-muted-foreground">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border border-blue-200 rounded-lg bg-white/50 backdrop-blur-sm">
+                <div className="mb-4 sm:mb-0">
+                  <h4 className="font-medium text-gray-800">Live Location</h4>
+                  <p className="text-sm text-gray-600">
                     {isLocationEnabled ? '✅ Your location is being shared with your parents' : 'Enable location sharing for safety'}
                   </p>
                 </div>
                 <Button
                   onClick={isLocationEnabled ? stopLocationTracking : requestLocationPermission}
                   variant={isLocationEnabled ? "secondary" : "default"}
+                  className={`${!isLocationEnabled ? 'bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600' : 'bg-gray-100'} shadow-md`}
                 >
                   {isLocationEnabled ? 'Enabled' : 'Enable Location'}
                 </Button>
@@ -369,10 +370,10 @@ const ChildDashboard = () => {
           </Card>
 
           {/* Quick Status Messages */}
-          <Card className="md:col-span-2">
+          <Card className="md:col-span-2 border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50 shadow-lg hover:shadow-xl transition-shadow">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <User className="h-5 w-5 text-blue-500" />
+                <User className="h-5 w-5 text-purple-500" />
                 Quick Status Updates
               </CardTitle>
               <CardDescription>
