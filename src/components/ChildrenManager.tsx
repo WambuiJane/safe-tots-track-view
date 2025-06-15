@@ -28,7 +28,6 @@ type ChildrenManagerProps = {
 
 const ChildrenManager = ({ setSelectedChildId, onChildSettingsChange }: ChildrenManagerProps) => {
   const { user } = useAuth();
-  const [isAddChildOpen, setIsAddChildOpen] = useState(false);
 
   const { data: children = [], isLoading } = useQuery({
     queryKey: ['children', user?.id],
@@ -119,22 +118,14 @@ const ChildrenManager = ({ setSelectedChildId, onChildSettingsChange }: Children
           {children.length === 0 && (
             <div className="text-center py-8">
               <p className="text-muted-foreground mb-4">No children added yet</p>
-              <Button onClick={() => setIsAddChildOpen(true)} variant="outline">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Child
-              </Button>
+              <AddChildDialog />
             </div>
           )}
           
           {children.length > 0 && (
-            <Button onClick={() => setIsAddChildOpen(true)} variant="outline" className="w-full">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Another Child
-            </Button>
+            <AddChildDialog />
           )}
         </div>
-        
-        <AddChildDialog isOpen={isAddChildOpen} onOpenChange={setIsAddChildOpen} />
       </CardContent>
     </Card>
   );
