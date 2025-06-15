@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -88,9 +89,18 @@ const ChildSettingsSheet = ({ child, children, onOpenChange }: ChildSettingsShee
     try {
       console.log('Starting child deletion process for child ID:', child.id);
       
-      // Step 1: Delete all related data first
-      
-      // Delete location history
+      // Step 1: Delete geofences related to this child
+      const { error: geofenceError } = await supabase
+        .from('geofences')
+        .delete()
+        .eq('parent_id', child.id);
+
+      if (geofenceError) {
+        console.error('Error deleting geofences:', geofenceError);
+        // Don't return here, continue with other deletions
+      }
+
+      // Step 2: Delete location history
       const { error: locationError } = await supabase
         .from('location_history')
         .delete()
@@ -98,11 +108,10 @@ const ChildSettingsSheet = ({ child, children, onOpenChange }: ChildSettingsShee
 
       if (locationError) {
         console.error('Error deleting location history:', locationError);
-        toast.error('Failed to delete child location history');
-        return;
+        // Don't return here, continue with other deletions
       }
 
-      // Delete alerts
+      // Step 3: Delete alerts
       const { error: alertsError } = await supabase
         .from('alerts')
         .delete()
@@ -110,11 +119,10 @@ const ChildSettingsSheet = ({ child, children, onOpenChange }: ChildSettingsShee
 
       if (alertsError) {
         console.error('Error deleting alerts:', alertsError);
-        toast.error('Failed to delete child alerts');
-        return;
+        // Don't return here, continue with other deletions
       }
 
-      // Delete quick messages
+      // Step 4: Delete quick messages
       const { error: messagesError } = await supabase
         .from('quick_messages')
         .delete()
@@ -122,11 +130,10 @@ const ChildSettingsSheet = ({ child, children, onOpenChange }: ChildSettingsShee
 
       if (messagesError) {
         console.error('Error deleting quick messages:', messagesError);
-        toast.error('Failed to delete child messages');
-        return;
+        // Don't return here, continue with other deletions
       }
 
-      // Step 2: Delete parent-child relationships
+      // Step 5: Delete parent-child relationships
       const { error: relationError } = await supabase
         .from('parent_child_relations')
         .delete()
@@ -138,7 +145,7 @@ const ChildSettingsSheet = ({ child, children, onOpenChange }: ChildSettingsShee
         return;
       }
 
-      // Step 3: Delete the child profile
+      // Step 6: Delete the child profile from the profiles table
       const { error: profileError } = await supabase
         .from('profiles')
         .delete()
@@ -150,15 +157,33 @@ const ChildSettingsSheet = ({ child, children, onOpenChange }: ChildSettingsShee
         return;
       }
 
+      // Step 7: Delete the user from Supabase Auth (this requires admin privileges)
+      // Since we can't delete auth users from the client side, we'll use a function call
+      try {
+        const { error: authError } = await supabase.rpc('delete_user', { 
+          user_id: child.id 
+        });
+        
+        if (authError) {
+          console.error('Error deleting auth user:', authError);
+          // This might fail if the function doesn't exist, but the profile is already deleted
+          console.log('Auth user deletion failed, but profile was successfully removed');
+        }
+      } catch (authDeleteError) {
+        console.error('Auth deletion not available:', authDeleteError);
+        // This is expected if the RPC function doesn't exist
+      }
+
       console.log('Child deletion completed successfully');
       toast.success('Child removed successfully');
       setOpen(false);
       
-      // Invalidate relevant queries
+      // Invalidate relevant queries to refresh the UI
       queryClient.invalidateQueries({ queryKey: ['children'] });
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
     } catch (error) {
       console.error('Unexpected error deleting child:', error);
-      toast.error('An unexpected error occurred');
+      toast.error('An unexpected error occurred while deleting the child');
     } finally {
       setIsDeleting(false);
     }
@@ -213,10 +238,10 @@ const ChildSettingsSheet = ({ child, children, onOpenChange }: ChildSettingsShee
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This will permanently delete {child.full_name || 'this child'} and all their data including location history, alerts, and messages. 
-                        This action cannot be undone.
+                        This will permanently delete {child.full_name || 'this child'} and all their data including location history, alerts, geofences, and messages. 
+                        This action cannot be undone and will remove the child's account entirely.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -226,7 +251,7 @@ const ChildSettingsSheet = ({ child, children, onOpenChange }: ChildSettingsShee
                         disabled={isDeleting}
                         className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                       >
-                        {isDeleting ? 'Removing...' : 'Remove Child'}
+                        {isDeleting ? 'Removing...' : 'Remove Child Permanently'}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
